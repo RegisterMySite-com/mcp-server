@@ -1,0 +1,4 @@
+# Copy to .dev.vars for local secrets (never commit .dev.vars)
+# COOKIE_ENCRYPTION_KEY=your-random-32-byte-hex
+# GITHUB_CLIENT_ID=
+# GITHUB_CLIENT_SECRET=

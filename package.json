@@ -1,0 +1,34 @@
+{
+  "name": "cloudflare-mcp-workspace",
+  "version": "1.0.0",
+  "description": "Production-ready remote MCP server — Personal Knowledge & AI Workspace powered by Cloudflare Workers, D1, KV, R2, Workers AI, and Vectorize",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "types": "wrangler types",
+    "db:migrate:local": "wrangler d1 migrations apply knowledge --local",
+    "db:migrate:remote": "wrangler d1 migrations apply knowledge --remote",
+    "db:seed:local": "wrangler d1 execute knowledge --local --file=./migrations/seed.sql",
+    "db:seed:remote": "wrangler d1 execute knowledge --remote --file=./migrations/seed.sql",
+    "cf-typegen": "wrangler types",
+    "check": "tsc --noEmit",
+    "postinstall": "wrangler types || true"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^0.0.5",
+    "@modelcontextprotocol/server": "2.0.0",
+    "agents": "^0.20.1",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.0",
+    "wrangler": "^4.20.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
