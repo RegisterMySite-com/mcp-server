@@ -1,0 +1,78 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cloudflare-mcp-workspace",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-28",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "MCP_SERVER_NAME": "Cloudflare Knowledge Workspace",
+    "MCP_SERVER_VERSION": "1.1.0",
+    "AUTH_ENABLED": "true",
+    "CORS_ORIGINS": "*",
+    "EMBED_MODEL": "@cf/baai/bge-base-en-v1.5",
+    "LLM_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    "HTML_DEPLOY_BASE_URL": "https://html-deploy.registermysite.com",
+    "DEFAULT_FROM_EMAIL": "info@registermysite.com"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "knowledge",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "00000000-0000-0000-0000-000000000000"
+    },
+    {
+      "binding": "OAUTH_KV",
+      "id": "00000000-0000-0000-0000-000000000001"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "mcp-workspace-docs"
+    }
+  ],
+  "ai": {
+    "binding": "AI"
+  },
+  "vectorize": [
+    {
+      "binding": "VECTORIZE",
+      "index_name": "mcp-knowledge"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "INDEX_QUEUE",
+        "queue": "mcp-index"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "mcp-index",
+        "max_batch_size": 8,
+        "max_batch_timeout": 5,
+        "max_retries": 3,
+        "dead_letter_queue": "mcp-index-dlq"
+      }
+    ]
+  },
+  "analytics_engine_datasets": [
+    {
+      "binding": "METRICS",
+      "dataset": "mcp_tool_metrics"
+    }
+  ]
+}
