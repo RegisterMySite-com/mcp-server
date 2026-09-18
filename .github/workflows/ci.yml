@@ -14,14 +14,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
       - name: Install
-        run: |
-          if [ -f package-lock.json ]; then npm ci --ignore-scripts; else npm install --ignore-scripts; fi
+        run: npm ci --ignore-scripts
       - name: Typecheck
         run: npx tsc --noEmit
       - name: Layout
         run: |
           test -f wrangler.jsonc
+          test -f package-lock.json
           test -f src/index.ts
           test -f src/tools/d1.ts
           test -f src/tools/r2.ts

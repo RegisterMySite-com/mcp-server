@@ -22,16 +22,15 @@ function authEnabled(env: Env): boolean {
 
 function buildMcpHandler(env: Env) {
   const origins = parseOrigins(env.CORS_ORIGINS);
+  const origin: string = origins === "*" ? "*" : origins[0] ?? "*";
   return createMcpHandler(() => createServer(env), {
     route: "/mcp",
-    corsOptions: {
-      origin: origins === "*" ? "*" : origins,
-    },
+    corsOptions: { origin },
   });
 }
 
 const publicWorker: ExportedHandler<Env> = {
-  async fetch(request, env, ctx) {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const url = new URL(request.url);
     const extra = corsHeaders(request, parseOrigins(env.CORS_ORIGINS));
 
@@ -76,26 +75,29 @@ function buildOAuthWorker() {
       async fetch(request: Request, env: Env, ctx: ExecutionContext) {
         return buildMcpHandler(env)(request, env, ctx);
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     defaultHandler: AuthHandler as any,
     authorizeEndpoint: "/authorize",
     tokenEndpoint: "/oauth/token",
     clientRegistrationEndpoint: "/oauth/register",
     scopesSupported: ["mcp:tools", "mcp:read", "mcp:write"],
     accessTokenTTL: 3600,
-    refreshTokenTTL: 2592000,
+    // refreshTokenTTL is supported on workers-oauth-provider >= 0.0.8.
+    // Keep the constructor compatible with ^0.0.5 used in package.json.
   });
 }
 
 const oauthWorker = buildOAuthWorker();
 
 const worker: ExportedHandler<Env> = {
-  async fetch(request, env, ctx) {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     if (!authEnabled(env)) return publicWorker.fetch!(request, env, ctx);
     return oauthWorker.fetch(request, env, ctx);
   },
 
-  async queue(batch, env) {
+  async queue(batch: MessageBatch<IndexJob>, env: Env) {
     for (const msg of batch.messages) {
       try {
         const job = msg.body as IndexJob;

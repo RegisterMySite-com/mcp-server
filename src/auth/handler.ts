@@ -62,7 +62,7 @@ async function takeState<T>(env: AuthEnv, id: string): Promise<T | null> {
 }
 
 export const AuthHandler: ExportedHandler<AuthEnv> = {
-  async fetch(request, env) {
+  async fetch(request: Request, env: AuthEnv) {
     const url = new URL(request.url);
 
     if (url.pathname === "/health") {

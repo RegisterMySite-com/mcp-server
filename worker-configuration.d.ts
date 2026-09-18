@@ -2,7 +2,42 @@
 /**
  * Binding types for the Cloudflare MCP Workspace.
  * Keep in sync with wrangler.jsonc. `wrangler types` may overwrite this file.
+ *
+ * Ambient Worker runtime names so `tsc --noEmit` succeeds in CI without
+ * requiring `@cloudflare/workers-types` as a direct dependency.
  */
+
+interface ExecutionContext {
+  waitUntil(promise: Promise<unknown>): void;
+  passThroughOnException(): void;
+  props?: unknown;
+}
+
+interface Message<Body = unknown> {
+  readonly id: string;
+  readonly timestamp: Date;
+  readonly body: Body;
+  readonly attempts: number;
+  ack(): void;
+  retry(options?: { delaySeconds?: number }): void;
+}
+
+interface MessageBatch<Body = unknown> {
+  readonly queue: string;
+  readonly messages: Message<Body>[];
+}
+
+interface ExportedHandler<Env = unknown, QueueHandlerMessage = unknown> {
+  fetch?(request: Request, env: Env, ctx: ExecutionContext): Response | Promise<Response>;
+  queue?(batch: MessageBatch<QueueHandlerMessage>, env: Env, ctx: ExecutionContext): void | Promise<void>;
+}
+
+type D1Database = any;
+type KVNamespace = any;
+type R2Bucket = any;
+type Ai = any;
+type VectorizeIndex = any;
+type Queue = any;
 
 interface AnalyticsEngineDataset {
   writeDataPoint(event: {
