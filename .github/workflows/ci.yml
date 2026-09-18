@@ -14,9 +14,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - name: Install
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then npm ci --ignore-scripts; else npm install --ignore-scripts; fi
       - name: Typecheck
         run: npx tsc --noEmit
       - name: Layout
@@ -24,5 +24,7 @@ jobs:
           test -f wrangler.jsonc
           test -f src/index.ts
           test -f src/tools/d1.ts
+          test -f src/tools/r2.ts
           test -f src/tools/email.ts
+          test -f src/auth/handler.ts
           test -f migrations/0002_fts_email.sql
