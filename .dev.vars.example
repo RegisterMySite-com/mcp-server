@@ -1,4 +1,11 @@
 # Copy to .dev.vars for local secrets (never commit .dev.vars)
-# COOKIE_ENCRYPTION_KEY=your-random-32-byte-hex
-# GITHUB_CLIENT_ID=
-# GITHUB_CLIENT_SECRET=
+COOKIE_ENCRYPTION_KEY=replace-with-32-plus-random-bytes
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+HTML_DEPLOY_TOKEN=
+EMAIL_API_URL=
+EMAIL_API_KEY=
+CF_ACCOUNT_ID=
+CF_API_TOKEN=
+AUTH_ENABLED=true
+CORS_ORIGINS=http://localhost:8787
