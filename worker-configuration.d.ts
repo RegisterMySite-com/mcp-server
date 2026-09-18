@@ -59,17 +59,22 @@ interface KVNamespace {
   put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
   delete(key: string): Promise<void>;
   list(options?: { prefix?: string; limit?: number; cursor?: string }): Promise<{
-    keys: Array<{ name: string }>;
+    keys: Array<{ name: string; expiration?: number; metadata?: unknown }>;
     list_complete: boolean;
     cursor?: string;
   }>;
 }
 
 interface R2ObjectBody {
+  key: string;
+  size: number;
+  uploaded?: Date;
+  httpEtag?: string;
+  customMetadata?: Record<string, string>;
+  httpMetadata?: { contentType?: string };
   text(): Promise<string>;
   arrayBuffer(): Promise<ArrayBuffer>;
   json<T = unknown>(): Promise<T>;
-  httpMetadata?: { contentType?: string };
 }
 
 interface R2Bucket {
@@ -81,7 +86,7 @@ interface R2Bucket {
   ): Promise<unknown>;
   delete(key: string | string[]): Promise<void>;
   list(options?: { prefix?: string; limit?: number; cursor?: string }): Promise<{
-    objects: Array<{ key: string; size: number; uploaded: Date }>;
+    objects: Array<{ key: string; size: number; uploaded: Date; httpEtag?: string }>;
     truncated: boolean;
     cursor?: string;
   }>;
@@ -107,6 +112,13 @@ interface VectorizeIndex {
     vectors: Array<{ id: string; values: number[]; metadata?: Record<string, unknown> }>
   ): Promise<unknown>;
   deleteByIds(ids: string[]): Promise<unknown>;
+  describe(): Promise<{
+    name?: string;
+    description?: string;
+    dimensions?: number;
+    metric?: string;
+    vectorsCount?: number;
+  }>;
 }
 
 interface Queue<Body = unknown> {
