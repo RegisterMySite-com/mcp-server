@@ -27,7 +27,14 @@ export function registerAiTools(server: McpServer, env: Env) {
       description: "Summarize a piece of text using Workers AI. Ideal for long notes or documents.",
       inputSchema: z.object({
         text: z.string().min(1).max(50000),
-        maxLength: z.number().int().min(50).max(2000).optional().default(300),
+        maxLength: z
+          .number()
+          .int()
+          .min(50)
+          .max(2000)
+          .optional()
+          .default(300)
+          .describe("Approximate target length of the summary in words"),
         style: z.enum(["concise", "detailed", "bullet"]).optional().default("concise"),
       }),
     },
@@ -46,10 +53,11 @@ export function registerAiTools(server: McpServer, env: Env) {
   server.registerTool(
     "ai_generate",
     {
-      description: "Generate text with Workers AI from a free-form prompt.",
+      description:
+        "Generate text with Workers AI from a free-form prompt. Useful for drafting notes, replies, or creative content.",
       inputSchema: z.object({
         prompt: z.string().min(1).max(10000),
-        system: z.string().optional(),
+        system: z.string().optional().describe("Optional system instruction for the model"),
         maxTokens: z.number().int().min(16).max(4096).optional().default(512),
       }),
     },
@@ -71,7 +79,7 @@ export function registerAiTools(server: McpServer, env: Env) {
     wrapTool(env, "ai_classify_note", async ({ title, content = "" }) => {
       const raw = await complete(
         env,
-        `Title: ${title}\n\n${content.slice(0, 4000)}\n\nReturn JSON {\"category\":string,\"tags\":string[],\"summary\":string}`,
+        `Title: ${title}\n\n${content.slice(0, 4000)}\n\nReturn JSON {"category":string,"tags":string[],"summary":string}`,
         "You classify knowledge-base notes. Reply with JSON only.",
         256
       );
@@ -82,22 +90,26 @@ export function registerAiTools(server: McpServer, env: Env) {
   server.registerTool(
     "kb_ask",
     {
-      description: "Answer a question grounded in semantically similar notes.",
+      description:
+        "Answer a question grounded in semantically similar notes. Retrieves Vectorize matches then generates an answer.",
       inputSchema: z.object({
         question: z.string().min(1).max(2000),
         topK: z.number().int().min(1).max(10).optional().default(5),
       }),
     },
-    wrapTool(env, "kb_ask", async ({ question, topK = 5 }) => {
+    wrapTool(env, "kb_ask", async ({ question, topK = 5 }: { question: string; topK?: number }) => {
       const embedded = (await env.AI.run(
         (env.EMBED_MODEL || "@cf/baai/bge-base-en-v1.5") as Parameters<Ai["run"]>[0],
         { text: [question] }
       )) as { data?: number[][] };
       const vector = embedded.data?.[0];
       if (!vector) return textResult("Failed to embed question", true);
-      const matches = await env.VECTORIZE.query(vector, { topK, returnMetadata: "indexed" });
+      const matches = await env.VECTORIZE.query(vector, {
+        topK,
+        returnMetadata: "indexed",
+      });
       const context = (matches.matches ?? [])
-        .map((m, i) => {
+        .map((m: VectorizeMatch, i: number) => {
           const md = (m.metadata ?? {}) as Record<string, string>;
           return `[${i + 1}] (${md.resourceType ?? "note"} ${md.resourceId ?? m.id}) ${md.title ?? ""}\n${md.text ?? ""}`;
         })
@@ -110,7 +122,11 @@ export function registerAiTools(server: McpServer, env: Env) {
       );
       return structuredResult({
         answer,
-        matches: (matches.matches ?? []).map((m) => ({ id: m.id, score: m.score, metadata: m.metadata })),
+        matches: (matches.matches ?? []).map((m) => ({
+          id: m.id,
+          score: m.score,
+          metadata: m.metadata,
+        })),
       });
     })
   );

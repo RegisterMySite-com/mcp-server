@@ -32,12 +32,87 @@ interface ExportedHandler<Env = unknown, QueueHandlerMessage = unknown> {
   queue?(batch: MessageBatch<QueueHandlerMessage>, env: Env, ctx: ExecutionContext): void | Promise<void>;
 }
 
-type D1Database = any;
-type KVNamespace = any;
-type R2Bucket = any;
-type Ai = any;
-type VectorizeIndex = any;
-type Queue = any;
+type HeadersInit = Headers | Record<string, string> | Array<[string, string]>;
+
+interface D1Result<T = Record<string, unknown>> {
+  results: T[];
+  success: boolean;
+  meta?: Record<string, unknown>;
+}
+
+interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement;
+  first<T = Record<string, unknown>>(): Promise<T | null>;
+  all<T = Record<string, unknown>>(): Promise<D1Result<T>>;
+  run(): Promise<D1Result>;
+}
+
+interface D1Database {
+  prepare(query: string): D1PreparedStatement;
+  exec(query: string): Promise<unknown>;
+  batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]>;
+}
+
+interface KVNamespace {
+  get(key: string, type?: "text"): Promise<string | null>;
+  get(key: string, type: "json"): Promise<unknown>;
+  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
+  delete(key: string): Promise<void>;
+  list(options?: { prefix?: string; limit?: number; cursor?: string }): Promise<{
+    keys: Array<{ name: string }>;
+    list_complete: boolean;
+    cursor?: string;
+  }>;
+}
+
+interface R2ObjectBody {
+  text(): Promise<string>;
+  arrayBuffer(): Promise<ArrayBuffer>;
+  json<T = unknown>(): Promise<T>;
+  httpMetadata?: { contentType?: string };
+}
+
+interface R2Bucket {
+  get(key: string): Promise<R2ObjectBody | null>;
+  put(
+    key: string,
+    value: string | ArrayBuffer | ReadableStream | Blob,
+    options?: { httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string> }
+  ): Promise<unknown>;
+  delete(key: string | string[]): Promise<void>;
+  list(options?: { prefix?: string; limit?: number; cursor?: string }): Promise<{
+    objects: Array<{ key: string; size: number; uploaded: Date }>;
+    truncated: boolean;
+    cursor?: string;
+  }>;
+  head(key: string): Promise<{ key: string; size: number } | null>;
+}
+
+interface Ai {
+  run(model: string, inputs: Record<string, unknown>): Promise<unknown>;
+}
+
+interface VectorizeMatch {
+  id: string;
+  score?: number;
+  metadata?: Record<string, unknown>;
+}
+
+interface VectorizeIndex {
+  query(
+    vector: number[],
+    options?: { topK?: number; returnMetadata?: string | boolean; filter?: Record<string, unknown> }
+  ): Promise<{ matches: VectorizeMatch[] }>;
+  upsert(
+    vectors: Array<{ id: string; values: number[]; metadata?: Record<string, unknown> }>
+  ): Promise<unknown>;
+  deleteByIds(ids: string[]): Promise<unknown>;
+}
+
+interface Queue<Body = unknown> {
+  send(body: Body): Promise<void>;
+  sendBatch(messages: Array<{ body: Body }>): Promise<void>;
+}
 
 interface AnalyticsEngineDataset {
   writeDataPoint(event: {

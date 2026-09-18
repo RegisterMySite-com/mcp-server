@@ -94,7 +94,7 @@ const oauthWorker = buildOAuthWorker();
 const worker: ExportedHandler<Env> = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     if (!authEnabled(env)) return publicWorker.fetch!(request, env, ctx);
-    return oauthWorker.fetch(request, env, ctx);
+    return oauthWorker.fetch(request, env, ctx as never);
   },
 
   async queue(batch: MessageBatch<IndexJob>, env: Env) {
