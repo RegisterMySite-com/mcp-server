@@ -13,37 +13,26 @@ import { registerKvTools } from "./tools/kv";
 import { registerR2Tools } from "./tools/r2";
 import { registerAiTools } from "./tools/ai";
 import { registerVectorizeTools } from "./tools/vectorize";
+import { registerEmailTools } from "./tools/email";
+import { registerDeployTools } from "./tools/deploy";
 import { registerResources } from "./resources/index";
 import { registerPrompts } from "./prompts/index";
 
 export function createServer(env: Env): McpServer {
   const server = new McpServer({
     name: env.MCP_SERVER_NAME || "Cloudflare Knowledge Workspace",
-    version: env.MCP_SERVER_VERSION || "1.0.0",
+    version: env.MCP_SERVER_VERSION || "1.1.0",
   });
 
-  // Public utility tools
   registerUtilityTools(server, env);
-
-  // Knowledge store (D1)
   registerD1Tools(server, env);
-
-  // Fast KV storage
   registerKvTools(server, env);
-
-  // Object storage
   registerR2Tools(server, env);
-
-  // Workers AI
   registerAiTools(server, env);
-
-  // Semantic search
   registerVectorizeTools(server, env);
-
-  // Readable resources
+  registerEmailTools(server, env);
+  registerDeployTools(server, env);
   registerResources(server, env);
-
-  // Prompt templates
   registerPrompts(server);
 
   return server;

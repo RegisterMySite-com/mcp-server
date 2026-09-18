@@ -1,7 +1,7 @@
 {
   "name": "cloudflare-mcp-workspace",
-  "version": "1.0.0",
-  "description": "Production-ready remote MCP server — Personal Knowledge & AI Workspace powered by Cloudflare Workers, D1, KV, R2, Workers AI, and Vectorize",
+  "version": "1.1.0",
+  "description": "Production-ready remote MCP server — Personal Knowledge & AI Workspace powered by Cloudflare Workers, D1, KV, R2, Workers AI, Vectorize, Queues, and OAuth",
   "type": "module",
   "private": true,
   "scripts": {

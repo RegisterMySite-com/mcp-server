@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --ignore-scripts
+          else
+            npm install --ignore-scripts --legacy-peer-deps
+          fi
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Layout
+        run: |
+          test -f wrangler.jsonc
+          test -f src/index.ts
+          test -f src/tools/d1.ts
+          test -f src/tools/r2.ts
+          test -f src/tools/email.ts
+          test -f src/auth/handler.ts
+          test -f migrations/0002_fts_email.sql

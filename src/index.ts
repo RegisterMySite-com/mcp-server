@@ -1,74 +1,81 @@
 /**
  * Cloudflare MCP Workspace — Worker entry point
  *
- * Architecture (2026+ best practice):
+ * Architecture:
  *   - Stateless MCP server via createMcpHandler (Agents SDK)
- *   - Official @modelcontextprotocol/server (MCP 2026-07-28)
+ *   - Official @modelcontextprotocol/server
  *   - Streamable HTTP transport on /mcp
  *   - OAuth 2.1 via @cloudflare/workers-oauth-provider
- *
- * Toggle AUTH_ENABLED:
- *   false → public MCP (no login)
- *   true  → OAuth-protected /mcp (browser consent → token → tools)
+ *   - Queue consumer for Vectorize indexing
  */
 import { createMcpHandler } from "agents/mcp/server";
 import { OAuthProvider } from "@cloudflare/workers-oauth-provider";
 import { createServer } from "./server";
 import { AuthHandler } from "./auth/handler";
-import type { Env } from "./lib/types";
+import type { Env, IndexJob } from "./lib/types";
+import { corsHeaders, parseOrigins } from "./lib/utils";
+import { indexNow } from "./lib/embed";
 
-/**
- * true  = require OAuth for /mcp (needs OAUTH_KV + COOKIE_ENCRYPTION_KEY)
- * false = public tools (no login)
- */
-const AUTH_ENABLED = true;
+function authEnabled(env: Env): boolean {
+  return String(env.AUTH_ENABLED ?? "true").toLowerCase() !== "false";
+}
 
-// ── Stateless MCP handler ───────────────────────────────────────────────────
 function buildMcpHandler(env: Env) {
+  const origins = parseOrigins(env.CORS_ORIGINS);
+  const origin: string = origins === "*" ? "*" : origins[0] ?? "*";
   return createMcpHandler(() => createServer(env), {
     route: "/mcp",
-    corsOptions: { origin: "*" },
+    corsOptions: { origin },
   });
 }
 
-// ── Public Worker ───────────────────────────────────────────────────────────
 const publicWorker: ExportedHandler<Env> = {
-  async fetch(request, env, ctx) {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const url = new URL(request.url);
+    const extra = corsHeaders(request, parseOrigins(env.CORS_ORIGINS));
+
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: extra });
+    }
 
     if (url.pathname === "/health") {
-      return Response.json({
-        status: "ok",
-        server: env.MCP_SERVER_NAME,
-        version: env.MCP_SERVER_VERSION,
-        auth: false,
-      });
+      return Response.json(
+        {
+          status: "ok",
+          server: env.MCP_SERVER_NAME,
+          version: env.MCP_SERVER_VERSION,
+          auth: false,
+        },
+        { headers: extra }
+      );
     }
 
     if (url.pathname === "/" || url.pathname === "") {
-      return Response.json({
-        name: env.MCP_SERVER_NAME,
-        version: env.MCP_SERVER_VERSION,
-        mcp: "/mcp",
-        health: "/health",
-        auth: false,
-        docs: "Connect MCP clients to /mcp (Streamable HTTP). Auth is disabled.",
-      });
+      return Response.json(
+        {
+          name: env.MCP_SERVER_NAME,
+          version: env.MCP_SERVER_VERSION,
+          mcp: "/mcp",
+          health: "/health",
+          auth: false,
+          docs: "Connect MCP clients to /mcp (Streamable HTTP). Auth is disabled.",
+        },
+        { headers: extra }
+      );
     }
 
     return buildMcpHandler(env)(request, env, ctx);
   },
 };
 
-// ── OAuth-protected Worker ──────────────────────────────────────────────────
 function buildOAuthWorker() {
   return new OAuthProvider({
     apiRoute: "/mcp",
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     apiHandler: {
       async fetch(request: Request, env: Env, ctx: ExecutionContext) {
         return buildMcpHandler(env)(request, env, ctx);
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     defaultHandler: AuthHandler as any,
@@ -77,8 +84,31 @@ function buildOAuthWorker() {
     clientRegistrationEndpoint: "/oauth/register",
     scopesSupported: ["mcp:tools", "mcp:read", "mcp:write"],
     accessTokenTTL: 3600,
-    refreshTokenTTL: 2592000,
+    // refreshTokenTTL is supported on workers-oauth-provider >= 0.0.8.
+    // Keep the constructor compatible with ^0.0.5 used in package.json.
   });
 }
 
-export default AUTH_ENABLED ? buildOAuthWorker() : publicWorker;
+const oauthWorker = buildOAuthWorker();
+
+const worker: ExportedHandler<Env> = {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    if (!authEnabled(env)) return publicWorker.fetch!(request, env, ctx);
+    return oauthWorker.fetch(request, env, ctx as never);
+  },
+
+  async queue(batch: MessageBatch<IndexJob>, env: Env) {
+    for (const msg of batch.messages) {
+      try {
+        const job = msg.body as IndexJob;
+        await indexNow(env, job);
+        msg.ack();
+      } catch (err) {
+        console.error("index job failed", err);
+        msg.retry();
+      }
+    }
+  },
+};
+
+export default worker;
