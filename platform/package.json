@@ -1,0 +1,14 @@
+{
+  "name": "@registermysite/platform",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Stub RMS platform client, rms CLI, and MCP tool surface. See docs/rms-platform-api.md.",
+  "bin": {
+    "rms": "./src/cli.ts"
+  },
+  "scripts": {
+    "rms": "node --experimental-strip-types src/cli.ts",
+    "check": "tsc --noEmit -p tsconfig.json"
+  }
+}
